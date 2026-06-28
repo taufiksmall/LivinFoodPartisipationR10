@@ -92,6 +92,17 @@
       </sc-for>
 
       <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:13px; font-weight:700; margin-bottom:7px; color:#0b3a6e;">Merchant Livin' Food <span style="color:#e0455e;">*</span></label>
+        <select value="{{ merchant }}" onChange="{{ onMerchantChange }}" style="width:100%; padding:13px 14px; border:1px solid rgba(255,255,255,0.55); border-radius:14px; font-size:15px; font-family:inherit; color:#0b2a4a; background:rgba(255,255,255,0.40); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); box-shadow:inset 0 1px 1px rgba(255,255,255,0.7), 0 1px 2px rgba(10,40,80,0.05); outline:none; appearance:none;" style-focus="border-color:rgba(0,90,170,0.75); background:rgba(255,255,255,0.62); box-shadow:0 0 0 4px rgba(0,110,200,0.16), inset 0 1px 1px rgba(255,255,255,0.7);">
+          <option value="">-- Pilih Merchant --</option>
+          <sc-for list="{{ merchantOptions }}" as="opt" hint-placeholder-count="6">
+            <option value="{{ opt }}">{{ opt }}</option>
+          </sc-for>
+        </select>
+        <sc-if value="{{ err_merchant }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px; color:#e0455e; margin-top:6px; font-weight:600;">Merchant wajib dipilih.</div></sc-if>
+      </div>
+
+      <div style="margin-bottom:18px;">
         <label style="display:block; font-size:13px; font-weight:700; margin-bottom:7px; color:#0b3a6e;">Bukti Screenshot <span style="color:#e0455e;">*</span></label>
 
         <div style="display:flex; gap:12px; align-items:center; padding:12px; margin-bottom:12px; border-radius:16px; background:rgba(255,255,255,0.30); border:1px solid rgba(255,255,255,0.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);">
@@ -140,6 +151,8 @@ class Component extends DCLogic {
 
   SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzes9V-8_64gt29WAxxFcfyaRBhX-JSVPU7WiFI17_-QXXIwDDAP3bNE_47lTQiqH2B3g/exec";
 
+  MERCHANT_LIST = ["KFC","Eksposed","Darikopi","Konijiwa","Coto Dg Tayang","Mas Daeng"];
+
   AREA_LIST = ["Region","Manado","Palu","Makassar Kartini","Kendari Mesjid Agung","Pare Pare","Makassar Ratulangi","Maluku"];
 
   UNITS = ["Regional CEO","L3+","Business Support","Consumer Loan","Credit Card","Government Business","Regional Business Control","Regional Financial","Regional Human","Regional Legal","Retail Funding","Personal Loan","Transaction Banking Retail","Transaction Banking Wholesale","SME","Wealth Business"];
@@ -177,6 +190,7 @@ class Component extends DCLogic {
   };
   onUnitChange = (e) => this.setField('unit', e.target.value);
   onCabangChange = (e) => this.setField('cabang', e.target.value);
+  onMerchantChange = (e) => this.setField('merchant', e.target.value);
 
   onFile = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -273,7 +287,6 @@ class Component extends DCLogic {
       { name: 'nip', label: 'NIP', req: true, optText: '(10 digit angka)', placeholder: 'Contoh: 0123456789', inputMode: 'numeric', maxLength: 10, errMsg: 'NIP wajib diisi dan harus tepat 10 digit angka.' },
       { name: 'jabatan', label: 'Jabatan', req: true, placeholder: 'Contoh: Branch Manager / Frontliner', errMsg: 'Jabatan wajib diisi.' },
       { name: 'hp', label: 'No. HP', req: true, type: 'tel', inputMode: 'numeric', maxLength: 15, placeholder: 'Contoh: 081234567890', errMsg: 'No. HP wajib diisi (minimal 9 digit).' },
-      { name: 'merchant', label: "Merchant Livin' Food", req: true, placeholder: 'Nama merchant tempat transaksi', errMsg: 'Nama merchant wajib diisi.' },
       { name: 'issue', label: 'Issue / Kendala', optText: '(jika ada)', type: 'textarea', placeholder: 'Kosongkan jika tidak ada kendala' },
       { name: 'tanggalTransaksi', label: 'Tanggal Transaksi', req: true, type: 'date', max: maxDate, errMsg: 'Tanggal transaksi wajib diisi.' }
     ];
@@ -309,7 +322,8 @@ class Component extends DCLogic {
       area: s.area, unit: s.unit, cabang: s.cabang,
       areaOptions: this.AREA_LIST, unitOptions: this.UNITS, cabangOptions,
       showUnit, showCabang,
-      err_area: !!e.area, err_unit: !!e.unit, err_cabang: !!e.cabang, err_shot: !!e.shot,
+      err_area: !!e.area, err_unit: !!e.unit, err_cabang: !!e.cabang, err_merchant: !!e.merchant, err_shot: !!e.shot,
+      merchant: s.merchant, merchantOptions: this.MERCHANT_LIST, onMerchantChange: this.onMerchantChange,
       textFields,
       onAreaChange: this.onAreaChange, onUnitChange: this.onUnitChange, onCabangChange: this.onCabangChange,
       onFile: this.onFile, onSubmit: this.onSubmit,
