@@ -583,23 +583,32 @@ async function runOCR(imageDataUrl) {
     const lower = text.toLowerCase();
     let kode = null;
 
-    // Prioritas 1: KFC — "pickup number" + kode alfanumerik (mis. NA018)
+    // Prioritas 1: KFC app — "pickup number" + kode alfanumerik (mis. NA018)
     const kfcMatch = text.match(/pickup\s+number[^A-Z0-9]{0,15}([A-Z]{1,3}\d{2,5})/i);
     if (kfcMatch) kode = kfcMatch[1].toUpperCase();
 
-    // Prioritas 2: Livin' pickup — angka setelah "kode"
+    // Prioritas 2: Livin' MVA / Payment Confirmation
+    // Format: "14210707N26A021 - Nama Pegawai" (kode alfanumerik panjang yg mix angka+huruf)
+    // Muncul di baris ke-2 setelah VA number, sebelum nama orang
+    if (!kode && (lower.indexOf('pembayaran berhasil') !== -1 || lower.indexOf('mva') !== -1)) {
+      // Cari kode format: angka+huruf+angka (mis. 14210707N26A021)
+      const mvaMatch = text.match(/\b(\d{4,10}[A-Z]\d{2,5}[A-Z]\d{2,5})\b/);
+      if (mvaMatch) kode = mvaMatch[1];
+    }
+
+    // Prioritas 3: Livin' pickup — angka setelah "kode"
     if (!kode) {
       const m = lower.match(/kode[^0-9]{0,30}(\d{4,6})/);
       if (m) kode = m[1];
     }
 
-    // Prioritas 3: Livin' delivery — angka setelah "nomor pesanan"
+    // Prioritas 4: Livin' delivery — angka setelah "nomor pesanan"
     if (!kode) {
       const m = lower.match(/nomor\s+pesanan[^0-9]{0,20}(\d{4,6})/);
       if (m) kode = m[1];
     }
 
-    // Prioritas 4: "no. pesanan"
+    // Prioritas 5: "no. pesanan"
     if (!kode) {
       const m = lower.match(/no\.?\s*pesanan[^0-9]{0,20}(\d{4,6})/);
       if (m) kode = m[1];
