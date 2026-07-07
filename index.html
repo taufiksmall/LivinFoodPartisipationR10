@@ -132,19 +132,6 @@
   .section-hidden { display: none; }
 
   /* screenshot */
-  .shot-example {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 12px;
-    margin-bottom: 12px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--card-border);
-  }
-  .shot-example img { width: 62px; height: 88px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); flex: none; }
-  .shot-example p { font-size: 12px; line-height: 1.5; color: var(--text-light-70); }
-
   .upload-label {
     display: block;
     padding: 20px 16px;
@@ -332,11 +319,6 @@
     <!-- Screenshot -->
     <div class="field">
       <label class="field-label">Bukti Screenshot <span class="req">*</span></label>
-
-      <div class="shot-example">
-        <div style="width:62px;height:88px;border-radius:10px;background:linear-gradient(135deg,var(--blue-accent),var(--blue-mid));display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;flex:none;">📱</div>
-        <p>Contoh: screenshot <b>riwayat transaksi Livin' Food</b> — halaman <b>Histori</b> dengan status <b>"Selesai"</b>.</p>
-      </div>
 
       <label class="upload-label" for="shotFile">
         <input type="file" accept="image/*" id="shotFile" style="display:none">
