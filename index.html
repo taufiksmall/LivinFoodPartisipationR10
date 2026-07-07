@@ -160,9 +160,10 @@
     border-radius: 6px;
     background: rgba(255,255,255,0.07);
   }
-  .ocr-status.scanning { color: #93c5fd; }
-  .ocr-status.found    { color: #4ade80; }
-  .ocr-status.notfound { color: #fbbf24; }
+  .ocr-status.scanning  { color: #93c5fd; }
+  .ocr-status.found     { color: #4ade80; }
+  .ocr-status.notfound  { color: #fbbf24; }
+  .ocr-status.duplicate { color: #f87171; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); }
 
   .btn-submit {
     width: 100%;
@@ -457,7 +458,9 @@ var AREA_BRANCHES = {
 /* =====================================================================
    STATE
 ===================================================================== */
-var shotData = { base64: '', mime: '', name: '', preview: '' };
+var shotData      = { base64: '', mime: '', name: '', preview: '' };
+var _isDuplicate  = false;   // true jika nomor pesanan sudah ada di sheet
+var _dupChecking  = false;   // true saat sedang cek ke server
 
 /* =====================================================================
    AREA → tampilkan unit atau cabang
@@ -620,8 +623,8 @@ async function runOCR(imageDataUrl) {
         inp.dataset.ocrFilled = 'true';
         clearErr('idPemesanan');
       }
-      st.className = 'ocr-status found';
-      st.textContent = '✅ Terdeteksi: ' + kode + (inp.dataset.ocrFilled === 'true' ? '' : ' (field sudah diisi manual)');
+      // Langsung cek duplikat ke server (akan update st.textContent sendiri)
+      await checkDuplicate(kode);
     } else {
       st.className = 'ocr-status notfound';
       st.textContent = '⚠️ Tidak terdeteksi — silakan isi manual';
@@ -632,11 +635,68 @@ async function runOCR(imageDataUrl) {
   }
 }
 
-// Reset flag saat user edit manual
+/* =====================================================================
+   CEK DUPLIKAT — panggil backend untuk verifikasi nomor pesanan
+===================================================================== */
+async function checkDuplicate(kode) {
+  if (!kode) return;
+  const st  = document.getElementById('ocrStatus');
+  const inp = document.getElementById('idPemesanan');
+  const btn = document.getElementById('submitBtn');
+  const errEl = document.getElementById('err_idPemesanan');
+
+  _dupChecking = true;
+  btn.disabled = true;
+  st.className = 'ocr-status scanning';
+  st.style.display = 'block';
+  st.textContent = '🔄 Memeriksa nomor pesanan…';
+
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=checkDuplicate&idPemesanan=' + encodeURIComponent(kode));
+    const json = await res.json();
+
+    if (json.exists) {
+      _isDuplicate = true;
+      st.className = 'ocr-status duplicate';
+      st.textContent = '❌ Nomor pesanan ' + kode + ' sudah pernah diinput!';
+      inp.classList.add('has-error');
+      if (errEl) { errEl.textContent = 'Nomor pesanan ini sudah ada. Gunakan nomor pesanan yang berbeda.'; errEl.classList.add('show'); }
+      btn.disabled = true;
+    } else {
+      _isDuplicate = false;
+      st.className = 'ocr-status found';
+      st.textContent = '✅ Terdeteksi: ' + kode + ' · Nomor pesanan valid';
+      inp.classList.remove('has-error');
+      if (errEl) errEl.classList.remove('show');
+      btn.disabled = false;
+    }
+  } catch (_) {
+    // Network error — biarkan submit (tidak blokir, tapi beri peringatan)
+    _isDuplicate = false;
+    st.className = 'ocr-status notfound';
+    st.textContent = '⚠️ Gagal verifikasi duplikat — pastikan nomor pesanan benar sebelum submit';
+    btn.disabled = false;
+  }
+  _dupChecking = false;
+}
+
+// Reset flag & status saat user edit manual
 document.getElementById('idPemesanan').addEventListener('input', function() {
   this.dataset.ocrFilled = 'false';
+  _isDuplicate = false;
+  _dupChecking = false;
+  document.getElementById('submitBtn').disabled = false;
   const st = document.getElementById('ocrStatus');
   st.style.display = 'none';
+  this.classList.remove('has-error');
+  const errEl = document.getElementById('err_idPemesanan');
+  if (errEl) { errEl.textContent = 'Kode / Nomor Pesanan wajib diisi.'; errEl.classList.remove('show'); }
+});
+
+// Cek duplikat saat user selesai ketik manual (blur)
+document.getElementById('idPemesanan').addEventListener('blur', function() {
+  var kode = this.value.trim();
+  if (kode && !_isDuplicate) checkDuplicate(kode);
 });
 
 /* =====================================================================
@@ -701,6 +761,16 @@ function validate() {
 document.getElementById('form').addEventListener('submit', function(e) {
   e.preventDefault();
 
+  // Blokir jika sedang cek duplikat atau sudah terkonfirmasi duplikat
+  if (_dupChecking) {
+    setStatus('error', 'Sedang memverifikasi nomor pesanan, harap tunggu…');
+    return;
+  }
+  if (_isDuplicate) {
+    setStatus('error', 'Nomor pesanan sudah pernah diinput. Ganti dengan nomor pesanan yang berbeda.');
+    return;
+  }
+
   ['area','unit','cabang','nama','nip','jabatan','hp','merchant','idPemesanan','tanggal','shot'].forEach(clearErr);
   setStatus('', '');
 
@@ -746,6 +816,7 @@ document.getElementById('form').addEventListener('submit', function(e) {
       document.getElementById('ulTitle').textContent = 'Ketuk untuk pilih / upload screenshot';
       document.getElementById('shotPreviewWrap').style.display = 'none';
       document.getElementById('ocrStatus').style.display = 'none';
+      _isDuplicate = false; _dupChecking = false;
       setStatus('success', 'Data berhasil dikirim. Terima kasih!');
     } else {
       setStatus('error', 'Gagal mengirim: ' + (json.message || 'Terjadi kesalahan.'));
