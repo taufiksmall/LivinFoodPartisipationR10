@@ -165,18 +165,6 @@
   .ocr-status.notfound  { color: #fbbf24; }
   .ocr-status.duplicate { color: #f87171; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); }
 
-  .nip-status {
-    display: none;
-    margin-top: 6px;
-    font-size: 11.5px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 6px;
-    background: rgba(255,255,255,0.07);
-  }
-  .nip-status.checking  { color: #93c5fd; }
-  .nip-status.ok        { color: #4ade80; }
-  .nip-status.duplicate { color: #f87171; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); }
 
   .btn-submit {
     width: 100%;
@@ -300,7 +288,6 @@
     <div class="field">
       <label class="field-label" for="nip">NIP <span class="req">*</span> <span class="opt">(10 digit angka)</span></label>
       <input class="field-input" type="text" id="nip" name="nip" inputmode="numeric" maxlength="10" placeholder="Contoh: 0123456789">
-      <div class="nip-status" id="nipStatus"></div>
       <div class="field-err" id="err_nip">NIP wajib diisi dan harus tepat 10 digit angka.</div>
     </div>
 
@@ -475,8 +462,6 @@ var AREA_BRANCHES = {
 var shotData      = { base64: '', mime: '', name: '', preview: '' };
 var _isDuplicate  = false;   // true jika nomor pesanan sudah ada di sheet
 var _dupChecking  = false;   // true saat sedang cek ke server
-var _nipDuplicate = false;   // true jika NIP+tanggal+merchant sudah ada
-var _nipChecking  = false;   // true saat sedang cek NIP ke server
 
 /* =====================================================================
    AREA → tampilkan unit atau cabang
@@ -705,81 +690,6 @@ async function checkDuplicate(kode) {
   _dupChecking = false;
 }
 
-/* =====================================================================
-   CEK DUPLIKAT NIP — NIP + tanggal + merchant harus unik per hari
-===================================================================== */
-async function checkNIPDuplicate() {
-  var nip      = document.getElementById('nip').value.trim();
-  var tanggal  = document.getElementById('tanggal').value;
-  var merchant = document.getElementById('merchant').value;
-
-  // Hanya cek jika ketiga field sudah terisi
-  if (!/^\d{10}$/.test(nip) || !tanggal || !merchant) return;
-
-  var st  = document.getElementById('nipStatus');
-  var btn = document.getElementById('submitBtn');
-
-  _nipChecking = true;
-  btn.disabled = true;
-  st.className = 'nip-status checking';
-  st.style.display = 'block';
-  st.textContent = '🔄 Memeriksa riwayat submit…';
-
-  try {
-    var url = SCRIPT_URL + '?action=checkNIP'
-            + '&nip='      + encodeURIComponent(nip)
-            + '&tanggal='  + encodeURIComponent(tanggal)
-            + '&merchant=' + encodeURIComponent(merchant);
-    var res  = await fetch(url);
-    var json = await res.json();
-
-    if (json.exists) {
-      _nipDuplicate = true;
-      st.className = 'nip-status duplicate';
-      st.textContent = '❌ NIP ini sudah submit untuk ' + merchant + ' pada ' + tanggal + '. Tidak bisa submit ulang.';
-      document.getElementById('nip').classList.add('has-error');
-      btn.disabled = true;
-    } else {
-      _nipDuplicate = false;
-      st.className = 'nip-status ok';
-      st.textContent = '✅ NIP valid — belum pernah submit untuk ' + merchant + ' hari ini';
-      document.getElementById('nip').classList.remove('has-error');
-      if (!_isDuplicate) btn.disabled = false;
-    }
-  } catch (_) {
-    // Network error — biarkan lanjut, backend tetap enforce
-    _nipDuplicate = false;
-    st.className = 'nip-status ok';
-    st.textContent = '⚠️ Gagal verifikasi — backend akan cek saat submit';
-    if (!_isDuplicate) btn.disabled = false;
-  }
-  _nipChecking = false;
-}
-
-// Trigger cek NIP saat user selesai isi NIP (blur)
-document.getElementById('nip').addEventListener('blur', function() {
-  _nipDuplicate = false;
-  document.getElementById('nipStatus').style.display = 'none';
-  this.classList.remove('has-error');
-  checkNIPDuplicate();
-});
-
-// Trigger ulang cek saat tanggal atau merchant berubah
-document.getElementById('tanggal').addEventListener('change', function() {
-  _nipDuplicate = false;
-  document.getElementById('nipStatus').style.display = 'none';
-  document.getElementById('nip').classList.remove('has-error');
-  document.getElementById('submitBtn').disabled = false;
-  checkNIPDuplicate();
-});
-document.getElementById('merchant').addEventListener('change', function() {
-  _nipDuplicate = false;
-  document.getElementById('nipStatus').style.display = 'none';
-  document.getElementById('nip').classList.remove('has-error');
-  document.getElementById('submitBtn').disabled = false;
-  checkNIPDuplicate();
-});
-
 // Reset flag saat user edit manual
 document.getElementById('idPemesanan').addEventListener('input', function() {
   this.dataset.ocrFilled = 'false';
@@ -861,13 +771,9 @@ function validate() {
 document.getElementById('form').addEventListener('submit', function(e) {
   e.preventDefault();
 
-  // Blokir jika sedang cek atau sudah terkonfirmasi duplikat
-  if (_nipChecking || _dupChecking) {
-    setStatus('error', 'Sedang memverifikasi data, harap tunggu…');
-    return;
-  }
-  if (_nipDuplicate) {
-    setStatus('error', 'NIP ini sudah pernah submit untuk merchant dan tanggal yang sama. Tidak bisa submit ulang.');
+  // Blokir jika sedang cek atau sudah terkonfirmasi duplikat nomor pesanan
+  if (_dupChecking) {
+    setStatus('error', 'Sedang memverifikasi nomor pesanan, harap tunggu…');
     return;
   }
   if (_isDuplicate) {
@@ -920,9 +826,7 @@ document.getElementById('form').addEventListener('submit', function(e) {
       document.getElementById('ulTitle').textContent = 'Ketuk untuk pilih / upload screenshot';
       document.getElementById('shotPreviewWrap').style.display = 'none';
       document.getElementById('ocrStatus').style.display = 'none';
-      document.getElementById('nipStatus').style.display = 'none';
       _isDuplicate = false; _dupChecking = false;
-      _nipDuplicate = false; _nipChecking = false;
       setStatus('success', 'Data berhasil dikirim. Terima kasih!');
     } else {
       setStatus('error', 'Gagal mengirim: ' + (json.message || 'Terjadi kesalahan.'));
