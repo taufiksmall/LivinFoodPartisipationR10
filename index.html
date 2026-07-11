@@ -320,18 +320,6 @@
       <div class="field-err" id="err_merchant">Merchant wajib dipilih.</div>
     </div>
 
-    <!-- Kode / Nomor Pesanan -->
-    <div class="field">
-      <label class="field-label" for="idPemesanan">
-        Kode / Nomor Pesanan <span class="req">*</span>
-        <span class="opt">(terdeteksi otomatis dari screenshot)</span>
-      </label>
-      <input class="field-input" type="text" id="idPemesanan" name="idPemesanan"
-             placeholder="Contoh: 10046 / 12220 / NA018">
-      <div class="ocr-status" id="ocrStatus"></div>
-      <div class="field-err" id="err_idPemesanan">Kode / Nomor Pesanan wajib diisi.</div>
-    </div>
-
     <!-- Issue / Kendala -->
     <div class="field">
       <label class="field-label" for="issue">Issue / Kendala <span class="opt">(jika ada)</span></label>
@@ -360,6 +348,18 @@
         <p id="shotName"></p>
       </div>
       <div class="field-err" id="err_shot">Screenshot bukti transaksi wajib diupload.</div>
+    </div>
+
+    <!-- Kode / Nomor Pesanan — terdeteksi otomatis setelah screenshot diupload -->
+    <div class="field">
+      <label class="field-label" for="idPemesanan">
+        Kode / Nomor Pesanan <span class="req">*</span>
+        <span class="opt">(terdeteksi otomatis dari screenshot)</span>
+      </label>
+      <input class="field-input" type="text" id="idPemesanan" name="idPemesanan"
+             placeholder="Upload screenshot dulu, atau isi manual">
+      <div class="ocr-status" id="ocrStatus"></div>
+      <div class="field-err" id="err_idPemesanan">Kode / Nomor Pesanan wajib diisi.</div>
     </div>
 
     <!-- Submit -->
@@ -667,10 +667,13 @@ async function checkDuplicate(kode) {
 
     if (json.exists) {
       _isDuplicate = true;
+      var byInfo = json.nama
+        ? 'oleh ' + json.nama + ' (NIP: ' + json.nip + ') pada ' + json.tanggal
+        : 'sebelumnya';
       st.className = 'ocr-status duplicate';
-      st.textContent = '❌ Nomor pesanan ' + kode + ' sudah pernah diinput!';
+      st.textContent = '❌ Nomor pesanan ' + kode + ' sudah diinput ' + byInfo + '.';
       inp.classList.add('has-error');
-      if (errEl) { errEl.textContent = 'Nomor pesanan ini sudah ada. Gunakan nomor pesanan yang berbeda.'; errEl.classList.add('show'); }
+      if (errEl) { errEl.textContent = 'Nomor pesanan ini sudah diinput ' + byInfo + '.'; errEl.classList.add('show'); }
       btn.disabled = true;
     } else {
       _isDuplicate = false;
